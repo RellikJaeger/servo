@@ -87,11 +87,7 @@ struct PrefetchHandle;
 
 impl TokenSink for PrefetchSink {
     type Handle = PrefetchHandle;
-    fn process_token(
-        &self,
-        token: Token,
-        _line_number: u64,
-    ) -> TokenSinkResult<PrefetchHandle> {
+    fn process_token(&self, token: Token, _line_number: u64) -> TokenSinkResult<PrefetchHandle> {
         let tag = match token {
             Token::TagToken(ref tag) => tag,
             _ => return TokenSinkResult::Continue,

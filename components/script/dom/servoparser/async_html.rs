@@ -5,7 +5,7 @@
 #![allow(crown::unrooted_must_root)]
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell, Ref, RefMut};
+use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::vec_deque::VecDeque;
 use std::collections::HashMap;
 use std::thread;
@@ -657,17 +657,15 @@ impl Sink {
     }
 
     fn get_parse_node_data<'a>(&'a self, id: &'a ParseNodeId) -> Ref<'a, ParseNodeData> {
-        Ref::map(
-            self.parse_node_data.borrow(),
-            |data| data.get(id).expect("Parse Node data not found!"),
-        )
+        Ref::map(self.parse_node_data.borrow(), |data| {
+            data.get(id).expect("Parse Node data not found!")
+        })
     }
 
     fn get_parse_node_data_mut<'a>(&'a self, id: &'a ParseNodeId) -> RefMut<'a, ParseNodeData> {
-        RefMut::map(
-            self.parse_node_data.borrow_mut(),
-            |data| data.get_mut(id).expect("Parse Node data not found!"),
-        )
+        RefMut::map(self.parse_node_data.borrow_mut(), |data| {
+            data.get_mut(id).expect("Parse Node data not found!")
+        })
     }
 }
 
