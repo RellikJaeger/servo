@@ -4,6 +4,7 @@
 
 #![allow(crown::unrooted_must_root)]
 
+use std::cell::Cell;
 use std::io;
 
 use html5ever::buffer_queue::BufferQueue;
@@ -47,7 +48,7 @@ impl Tokenizer {
         let sink = Sink {
             base_url: url,
             document: Dom::from_ref(document),
-            current_line: 1,
+            current_line: Cell::new(1),
             script: Default::default(),
             parsing_algorithm,
         };

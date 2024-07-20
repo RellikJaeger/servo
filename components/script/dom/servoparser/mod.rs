@@ -1064,7 +1064,7 @@ pub struct Sink {
     #[no_trace]
     base_url: ServoUrl,
     document: Dom<Document>,
-    current_line: u64,
+    current_line: Cell<u64>,
     script: MutNullableDom<HTMLScriptElement>,
     parsing_algorithm: ParsingAlgorithm,
 }
@@ -1091,11 +1091,11 @@ impl TreeSink for Sink {
 
     type Handle = Dom<Node>;
 
-    fn get_document(&mut self) -> Dom<Node> {
+    fn get_document(&self) -> Dom<Node> {
         Dom::from_ref(self.document.upcast())
     }
 
-    fn get_template_contents(&mut self, target: &Dom<Node>) -> Dom<Node> {
+    fn get_template_contents(&self, target: &Dom<Node>) -> Dom<Node> {
         let template = target
             .downcast::<HTMLTemplateElement>()
             .expect("tried to get template contents of non-HTMLTemplateElement in HTML parsing");
@@ -1117,7 +1117,7 @@ impl TreeSink for Sink {
     }
 
     fn create_element(
-        &mut self,
+        &self,
         name: QualName,
         attrs: Vec<Attribute>,
         _flags: ElementFlags,
@@ -1130,18 +1130,18 @@ impl TreeSink for Sink {
             name,
             attrs,
             &self.document,
-            ElementCreator::ParserCreated(self.current_line),
+            ElementCreator::ParserCreated(self.current_line.get()),
             self.parsing_algorithm,
         );
         Dom::from_ref(element.upcast())
     }
 
-    fn create_comment(&mut self, text: StrTendril) -> Dom<Node> {
+    fn create_comment(&self, text: StrTendril) -> Dom<Node> {
         let comment = Comment::new(DOMString::from(String::from(text)), &self.document, None);
         Dom::from_ref(comment.upcast())
     }
 
-    fn create_pi(&mut self, target: StrTendril, data: StrTendril) -> Dom<Node> {
+    fn create_pi(&self, target: StrTendril, data: StrTendril) -> Dom<Node> {
         let doc = &*self.document;
         let pi = ProcessingInstruction::new(
             DOMString::from(String::from(target)),
@@ -1152,7 +1152,7 @@ impl TreeSink for Sink {
     }
 
     fn associate_with_form(
-        &mut self,
+        &self,
         target: &Dom<Node>,
         form: &Dom<Node>,
         nodes: (&Dom<Node>, Option<&Dom<Node>>),
@@ -1181,7 +1181,7 @@ impl TreeSink for Sink {
         }
     }
 
-    fn append_before_sibling(&mut self, sibling: &Dom<Node>, new_node: NodeOrText<Dom<Node>>) {
+    fn append_before_sibling(&self, sibling: &Dom<Node>, new_node: NodeOrText<Dom<Node>>) {
         let parent = sibling
             .GetParentNode()
             .expect("append_before_sibling called on node without parent");
@@ -1189,11 +1189,11 @@ impl TreeSink for Sink {
         insert(&parent, Some(sibling), new_node, self.parsing_algorithm);
     }
 
-    fn parse_error(&mut self, msg: Cow<'static, str>) {
+    fn parse_error(&self, msg: Cow<'static, str>) {
         debug!("Parse error: {}", msg);
     }
 
-    fn set_quirks_mode(&mut self, mode: QuirksMode) {
+    fn set_quirks_mode(&self, mode: QuirksMode) {
         let mode = match mode {
             QuirksMode::Quirks => ServoQuirksMode::Quirks,
             QuirksMode::LimitedQuirks => ServoQuirksMode::LimitedQuirks,
@@ -1202,12 +1202,12 @@ impl TreeSink for Sink {
         self.document.set_quirks_mode(mode);
     }
 
-    fn append(&mut self, parent: &Dom<Node>, child: NodeOrText<Dom<Node>>) {
+    fn append(&self, parent: &Dom<Node>, child: NodeOrText<Dom<Node>>) {
         insert(parent, None, child, self.parsing_algorithm);
     }
 
     fn append_based_on_parent_node(
-        &mut self,
+        &self,
         elem: &Dom<Node>,
         prev_elem: &Dom<Node>,
         child: NodeOrText<Dom<Node>>,
@@ -1220,7 +1220,7 @@ impl TreeSink for Sink {
     }
 
     fn append_doctype_to_document(
-        &mut self,
+        &self,
         name: StrTendril,
         public_id: StrTendril,
         system_id: StrTendril,
@@ -1237,7 +1237,7 @@ impl TreeSink for Sink {
             .expect("Appending failed");
     }
 
-    fn add_attrs_if_missing(&mut self, target: &Dom<Node>, attrs: Vec<Attribute>) {
+    fn add_attrs_if_missing(&self, target: &Dom<Node>, attrs: Vec<Attribute>) {
         let elem = target
             .downcast::<Element>()
             .expect("tried to set attrs on non-Element in HTML parsing");
@@ -1250,20 +1250,20 @@ impl TreeSink for Sink {
         }
     }
 
-    fn remove_from_parent(&mut self, target: &Dom<Node>) {
+    fn remove_from_parent(&self, target: &Dom<Node>) {
         if let Some(ref parent) = target.GetParentNode() {
             parent.RemoveChild(target).unwrap();
         }
     }
 
-    fn mark_script_already_started(&mut self, node: &Dom<Node>) {
+    fn mark_script_already_started(&self, node: &Dom<Node>) {
         let script = node.downcast::<HTMLScriptElement>();
         if let Some(script) = script {
             script.set_already_started(true)
         }
     }
 
-    fn complete_script(&mut self, node: &Dom<Node>) -> NextParserState {
+    fn complete_script(&self, node: &Dom<Node>) -> NextParserState {
         if let Some(script) = node.downcast() {
             self.script.set(Some(script));
             NextParserState::Suspend
@@ -1272,7 +1272,7 @@ impl TreeSink for Sink {
         }
     }
 
-    fn reparent_children(&mut self, node: &Dom<Node>, new_parent: &Dom<Node>) {
+    fn reparent_children(&self, node: &Dom<Node>, new_parent: &Dom<Node>) {
         while let Some(ref child) = node.GetFirstChild() {
             new_parent.AppendChild(child).unwrap();
         }
@@ -1289,11 +1289,11 @@ impl TreeSink for Sink {
             })
     }
 
-    fn set_current_line(&mut self, line_number: u64) {
-        self.current_line = line_number;
+    fn set_current_line(&self, line_number: u64) {
+        self.current_line.set(line_number);
     }
 
-    fn pop(&mut self, node: &Dom<Node>) {
+    fn pop(&self, node: &Dom<Node>) {
         let node = DomRoot::from_ref(&**node);
         vtable_for(&node).pop();
     }
