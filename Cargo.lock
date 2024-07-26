@@ -2806,7 +2806,7 @@ dependencies = [
 [[package]]
 name = "html5ever"
 version = "0.27.0"
-source = "git+https://github.com/servo/html5ever?branch=no-mut-interface#f1f2e1d358a6e081ee195dbd3a041a1de0785939"
+source = "git+https://github.com/servo/html5ever?branch=no-mut-interface#89d15add95e18b1f659279e4bbf841467ee8decc"
 dependencies = [
  "log",
  "mac",
@@ -3810,7 +3810,7 @@ dependencies = [
 [[package]]
 name = "markup5ever"
 version = "0.12.1"
-source = "git+https://github.com/servo/html5ever?branch=no-mut-interface#f1f2e1d358a6e081ee195dbd3a041a1de0785939"
+source = "git+https://github.com/servo/html5ever?branch=no-mut-interface#89d15add95e18b1f659279e4bbf841467ee8decc"
 dependencies = [
  "log",
  "phf 0.11.2",
@@ -7949,7 +7949,7 @@ checksum = "791978798f0597cfc70478424c2b4fdc2b7a8024aaff78497ef00f24ef674193"
 [[package]]
 name = "xml5ever"
 version = "0.18.1"
-source = "git+https://github.com/servo/html5ever?branch=no-mut-interface#f1f2e1d358a6e081ee195dbd3a041a1de0785939"
+source = "git+https://github.com/servo/html5ever?branch=no-mut-interface#89d15add95e18b1f659279e4bbf841467ee8decc"
 dependencies = [
  "log",
  "mac",
