@@ -341,8 +341,7 @@ impl ServoParser {
             // parser is suspended, we just append everything to the
             // script input and abort these steps.
             for chunk in text {
-                self.script_input
-                    .push_back(String::from(chunk).into());
+                self.script_input.push_back(String::from(chunk).into());
             }
             return;
         }

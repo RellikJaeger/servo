@@ -355,7 +355,9 @@ impl Tokenizer {
     }
 
     fn get_node<'a>(&'a self, id: &ParseNodeId) -> Ref<'a, Dom<Node>> {
-        Ref::map(self.nodes.borrow(), |nodes| nodes.get(id).expect("Node not found!"))
+        Ref::map(self.nodes.borrow(), |nodes| {
+            nodes.get(id).expect("Node not found!")
+        })
     }
 
     fn append_before_sibling(&self, sibling: ParseNodeId, node: NodeOrText) {
