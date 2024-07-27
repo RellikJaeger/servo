@@ -162,6 +162,7 @@ strip = true
 [patch.crates-io]
 #html5ever = { path = "../html5ever/html5ever" }
 #markup5ever = { path = "../html5ever/markup5ever" }
+#xml5ever = { path = "../html5ever/xml5ever" }
 html5ever = { git = "https://github.com/servo/html5ever", branch = "no-mut-interface" }
 markup5ever = { git = "https://github.com/servo/html5ever", branch = "no-mut-interface" }
 xml5ever = { git = "https://github.com/servo/html5ever", branch = "no-mut-interface" }

@@ -58,7 +58,7 @@ impl Tokenizer {
         Tokenizer { inner }
     }
 
-    pub fn feed(&mut self, input: &mut BufferQueue) {
+    pub fn feed(&self, input: &BufferQueue) {
         while let TokenizerResult::Script(PrefetchHandle) = self.inner.feed(input) {}
     }
 }

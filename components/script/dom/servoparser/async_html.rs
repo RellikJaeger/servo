@@ -171,7 +171,7 @@ enum ToHtmlTokenizerMsg {
 }
 
 fn create_buffer_queue(mut buffers: VecDeque<SendTendril<UTF8>>) -> BufferQueue {
-    let mut buffer_queue = BufferQueue::default();
+    let buffer_queue = BufferQueue::default();
     while let Some(st) = buffers.pop_front() {
         buffer_queue.push_back(StrTendril::from(st));
     }
@@ -214,7 +214,7 @@ pub struct Tokenizer {
     #[no_trace]
     html_tokenizer_sender: Sender<ToHtmlTokenizerMsg>,
     #[ignore_malloc_size_of = "Defined in std"]
-    nodes: HashMap<ParseNodeId, Dom<Node>>,
+    nodes: RefCell<HashMap<ParseNodeId, Dom<Node>>>,
     #[no_trace]
     url: ServoUrl,
     parsing_algorithm: ParsingAlgorithm,
@@ -236,11 +236,11 @@ impl Tokenizer {
             None => ParsingAlgorithm::Normal,
         };
 
-        let mut tokenizer = Tokenizer {
+        let tokenizer = Tokenizer {
             document: Dom::from_ref(document),
             receiver: tokenizer_receiver,
             html_tokenizer_sender: to_html_tokenizer_sender,
-            nodes: HashMap::new(),
+            nodes: RefCell::new(HashMap::new()),
             url,
             parsing_algorithm: algorithm,
         };
@@ -283,7 +283,7 @@ impl Tokenizer {
         tokenizer
     }
 
-    pub fn feed(&mut self, input: &mut BufferQueue) -> TokenizerResult<DomRoot<HTMLScriptElement>> {
+    pub fn feed(&self, input: &BufferQueue) -> TokenizerResult<DomRoot<HTMLScriptElement>> {
         let mut send_tendrils = VecDeque::new();
         while let Some(str) = input.pop_front() {
             send_tendrils.push_back(SendTendril::from(str));
@@ -306,7 +306,7 @@ impl Tokenizer {
                 ToTokenizerMsg::ProcessOperation(parse_op) => self.process_operation(parse_op),
                 ToTokenizerMsg::TokenizerResultDone { updated_input } => {
                     let buffer_queue = create_buffer_queue(updated_input);
-                    *input = buffer_queue;
+                    input.replace_with(buffer_queue);
                     return TokenizerResult::Done;
                 },
                 ToTokenizerMsg::TokenizerResultScript {
@@ -314,7 +314,7 @@ impl Tokenizer {
                     updated_input,
                 } => {
                     let buffer_queue = create_buffer_queue(updated_input);
-                    *input = buffer_queue;
+                    input.replace_with(buffer_queue);
                     let script = self.get_node(&script.id);
                     return TokenizerResult::Script(DomRoot::from_ref(script.downcast().unwrap()));
                 },
@@ -323,7 +323,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn end(&mut self) {
+    pub fn end(&self) {
         self.html_tokenizer_sender
             .send(ToHtmlTokenizerMsg::End)
             .unwrap();
@@ -344,21 +344,21 @@ impl Tokenizer {
         &self.url
     }
 
-    pub fn set_plaintext_state(&mut self) {
+    pub fn set_plaintext_state(&self) {
         self.html_tokenizer_sender
             .send(ToHtmlTokenizerMsg::SetPlainTextState)
             .unwrap();
     }
 
-    fn insert_node(&mut self, id: ParseNodeId, node: Dom<Node>) {
-        assert!(self.nodes.insert(id, node).is_none());
+    fn insert_node(&self, id: ParseNodeId, node: Dom<Node>) {
+        assert!(self.nodes.borrow_mut().insert(id, node).is_none());
     }
 
-    fn get_node<'a>(&'a self, id: &ParseNodeId) -> &'a Dom<Node> {
-        self.nodes.get(id).expect("Node not found!")
+    fn get_node<'a>(&'a self, id: &ParseNodeId) -> Ref<'a, Dom<Node>> {
+        Ref::map(self.nodes.borrow(), |nodes| nodes.get(id).expect("Node not found!"))
     }
 
-    fn append_before_sibling(&mut self, sibling: ParseNodeId, node: NodeOrText) {
+    fn append_before_sibling(&self, sibling: ParseNodeId, node: NodeOrText) {
         let node = match node {
             NodeOrText::Node(n) => {
                 HtmlNodeOrText::AppendNode(Dom::from_ref(&**self.get_node(&n.id)))
@@ -373,7 +373,7 @@ impl Tokenizer {
         super::insert(parent, Some(sibling), node, self.parsing_algorithm);
     }
 
-    fn append(&mut self, parent: ParseNodeId, node: NodeOrText) {
+    fn append(&self, parent: ParseNodeId, node: NodeOrText) {
         let node = match node {
             NodeOrText::Node(n) => {
                 HtmlNodeOrText::AppendNode(Dom::from_ref(&**self.get_node(&n.id)))
@@ -398,7 +398,7 @@ impl Tokenizer {
         x.is_in_same_home_subtree(y)
     }
 
-    fn process_operation(&mut self, op: ParseOperation) {
+    fn process_operation(&self, op: ParseOperation) {
         let document = DomRoot::from_ref(&**self.get_node(&0));
         let document = document
             .downcast::<Document>()
@@ -469,8 +469,8 @@ impl Tokenizer {
                     .expect("Appending failed");
             },
             ParseOperation::AddAttrsIfMissing { target, attrs } => {
-                let elem = self
-                    .get_node(&target)
+                let node = self.get_node(&target);
+                let elem = node
                     .downcast::<Element>()
                     .expect("tried to set attrs on non-Element in HTML parsing");
                 for attr in attrs {
@@ -479,11 +479,12 @@ impl Tokenizer {
             },
             ParseOperation::RemoveFromParent { target } => {
                 if let Some(ref parent) = self.get_node(&target).GetParentNode() {
-                    parent.RemoveChild(self.get_node(&target)).unwrap();
+                    parent.RemoveChild(&self.get_node(&target)).unwrap();
                 }
             },
             ParseOperation::MarkScriptAlreadyStarted { node } => {
-                let script = self.get_node(&node).downcast::<HTMLScriptElement>();
+                let node = self.get_node(&node);
+                let script = node.downcast::<HTMLScriptElement>();
                 if let Some(script) = script {
                     script.set_already_started(true)
                 }
@@ -525,7 +526,7 @@ impl Tokenizer {
                 }
             },
             ParseOperation::Pop { node } => {
-                vtable_for(self.get_node(&node)).pop();
+                vtable_for(&self.get_node(&node)).pop();
             },
             ParseOperation::CreatePI { node, target, data } => {
                 let pi = ProcessingInstruction::new(
@@ -575,8 +576,8 @@ fn run(
             .expect("Unexpected channel panic in html parser thread")
         {
             ToHtmlTokenizerMsg::Feed { input } => {
-                let mut input = create_buffer_queue(input);
-                let res = html_tokenizer.feed(&mut input);
+                let input = create_buffer_queue(input);
+                let res = html_tokenizer.feed(&input);
 
                 // Gather changes to 'input' and place them in 'updated_input',
                 // which will be sent to the main thread to update feed method's 'input'

@@ -79,7 +79,7 @@ impl Tokenizer {
         Tokenizer { inner }
     }
 
-    pub fn feed(&mut self, input: &mut BufferQueue) -> TokenizerResult<DomRoot<HTMLScriptElement>> {
+    pub fn feed(&self, input: &BufferQueue) -> TokenizerResult<DomRoot<HTMLScriptElement>> {
         match self.inner.feed(input) {
             TokenizerResult::Done => TokenizerResult::Done,
             TokenizerResult::Script(script) => {
@@ -88,7 +88,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn end(&mut self) {
+    pub fn end(&self) {
         self.inner.end();
     }
 
@@ -96,7 +96,7 @@ impl Tokenizer {
         &self.inner.sink.sink.base_url
     }
 
-    pub fn set_plaintext_state(&mut self) {
+    pub fn set_plaintext_state(&self) {
         self.inner.set_plaintext_state();
     }
 }

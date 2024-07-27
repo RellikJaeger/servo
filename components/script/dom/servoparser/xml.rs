@@ -43,7 +43,7 @@ impl Tokenizer {
         Tokenizer { inner: tok }
     }
 
-    pub fn feed(&mut self, input: &mut BufferQueue) -> TokenizerResult<DomRoot<HTMLScriptElement>> {
+    pub fn feed(&self, input: &BufferQueue) -> TokenizerResult<DomRoot<HTMLScriptElement>> {
         self.inner.run(input);
         match self.inner.sink.sink.script.take() {
             Some(script) => TokenizerResult::Script(script),
@@ -51,7 +51,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn end(&mut self) {
+    pub fn end(&self) {
         self.inner.end()
     }
 
